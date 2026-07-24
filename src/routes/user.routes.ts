@@ -89,4 +89,60 @@ router.post("/users/verify", async (req, res) => {
     }
 });
 
+
+
+/**
+ * @swagger
+ * /api/users/login:
+ *   post:
+ *     summary: Вход
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: ivan@gmail.com
+ *               password:
+ *                 type: string
+ *                 example: mypassword123
+ *     responses:
+ *       200:
+ *         description: Токен выдан
+ *       401:
+ *         description: Неверный email или пароль
+ *       403:
+ *         description: Email не подтверждён
+ */
+router.post("/users/login", async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ message: "email и password обязательны" });
+        }
+
+        const { user, token } = await authService.login(email, password);
+
+        res.json({
+            user: { id: user.id, email: user.email },
+            token
+        });
+    } catch (err: any) {
+        if (err.message === "INVALID_CREDENTIALS") {
+            return res.status(401).json({ message: "Неверный email или пароль" });
+        }
+        if (err.message === "EMAIL_NOT_VERIFIED") {
+            return res.status(403).json({ message: "Email не подтверждён. Проверьте почту." });
+        }
+        res.status(500).json({ message: "Ошибка сервера" });
+    }
+});
+
+
+
+
 export default router;

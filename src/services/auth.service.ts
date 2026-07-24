@@ -71,6 +71,30 @@ export const authService = {
         // Только теперь выдаём настоящий токен доступа
         const token = generateToken({ id: verifiedUser.id, email: verifiedUser.email });
         return { user: verifiedUser, token };
+    },
+
+    // ======================
+    // АВТОРИЗАЦИЯ
+    // ======================
+    async login(email: string, password: string) {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            throw new Error("INVALID_CREDENTIALS"); // намеренно та же ошибка, что и для неверного пароля
+        }
+
+        // Сначала проверяем пароль, а не isVerified —
+        // иначе можно было бы узнать, существует ли email, даже не зная пароль
+        const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+        if (!isPasswordValid) {
+            throw new Error("INVALID_CREDENTIALS");
+        }
+
+        if (!user.isVerified) {
+            throw new Error("EMAIL_NOT_VERIFIED");
+        }
+
+        const token = generateToken({ id: user.id, email: user.email });
+        return { user, token };
     }
 
 };

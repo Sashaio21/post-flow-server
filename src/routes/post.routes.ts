@@ -1,0 +1,103 @@
+import { Router } from "express";
+import { authMiddleware } from "../middleware/auth.middleware";
+import { getAllPosts, getPostById, createPost, updatePost, deletePost } from "../controllers/post.controller";
+
+const router = Router();
+
+/**
+ * @swagger
+ * /api/posts:
+ *   get:
+ *     summary: Получить список своих постов
+ *     tags: [Posts]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Список постов }
+ *       401: { description: Токен не передан или недействителен }
+ */
+router.get("/posts", authMiddleware, getAllPosts);
+
+/**
+ * @swagger
+ * /api/posts/{id}:
+ *   get:
+ *     summary: Получить один пост по id
+ *     tags: [Posts]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer, example: 1 }
+ *     responses:
+ *       200: { description: Пост найден }
+ *       403: { description: Пост принадлежит другому пользователю }
+ *       404: { description: Пост не найден }
+ */
+router.get("/posts/:id", authMiddleware, getPostById);
+
+/**
+ * @swagger
+ * /api/posts:
+ *   post:
+ *     summary: Создать пост
+ *     tags: [Posts]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [title, socialNetwork]
+ *             properties:
+ *               title: { type: string }
+ *               socialNetwork: { type: string }
+ *               scheduledAt: { type: string, format: date-time, nullable: true }
+ *               tags: { type: array, items: { type: string } }
+ *               images: { type: array, items: { type: string } }
+ *     responses:
+ *       201: { description: Пост создан }
+ *       400: { description: Не переданы обязательные поля }
+ */
+router.post("/posts", authMiddleware, createPost);
+
+/**
+ * @swagger
+ * /api/posts/{id}:
+ *   put:
+ *     summary: Обновить пост
+ *     tags: [Posts]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer, example: 1 }
+ *     responses:
+ *       200: { description: Пост обновлён }
+ *       403: { description: Пост принадлежит другому пользователю }
+ *       404: { description: Пост не найден }
+ */
+router.put("/posts/:id", authMiddleware, updatePost);
+
+/**
+ * @swagger
+ * /api/posts/{id}:
+ *   delete:
+ *     summary: Удалить пост
+ *     tags: [Posts]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer, example: 1 }
+ *     responses:
+ *       200: { description: Пост удалён }
+ *       403: { description: Пост принадлежит другому пользователю }
+ *       404: { description: Пост не найден }
+ */
+router.delete("/posts/:id", authMiddleware, deletePost);
+
+export default router;
