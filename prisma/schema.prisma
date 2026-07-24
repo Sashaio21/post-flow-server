@@ -1,0 +1,72 @@
+// Указывает Prisma, что нужно сгенерировать типизированный JS/TS-клиент
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Описывает, к какой БД подключаемся и через какую переменную окружения
+datasource db {
+  provider = "postgresql"        // тип СУБД
+  url      = env("DATABASE_URL") // читает строку подключения из .env
+}
+
+// ======================
+// USER
+// ======================
+model User {
+  id           Int    @id @default(autoincrement()) // первичный ключ, автоинкремент (1, 2, 3...)
+  email        String @unique                        // уникальный индекс — два юзера не могут иметь один email
+  passwordHash String                                 // хэш-пароль, никогда не храним пароль как есть
+
+  // Обратные стороны связей — списки того, что принадлежит пользователю.
+  // В реальной БД колонок не создают, нужны только для удобного доступа из кода (user.posts, user.templates)
+  posts     Post[]
+  templates Template[]
+}
+
+// ======================
+// TEMPLATE (Шаблон)
+// ======================
+model Template {
+  id           Int      @id @default(autoincrement())
+  name         String                          // Название
+  htmlPath     String                          // путь к html файлу
+  imagesPath   String?                         // путь к изображениям — "?" значит поле необязательное
+  placeholders String[]                        // плейсхолдеры — массив строк, напр. ["title", "image"]
+  coverHtml    String?                         // html обложка — превью, как будет выглядеть шаблон
+
+  ownerId Int                                          // внешний ключ — id пользователя-владельца
+  owner   User @relation(fields: [ownerId], references: [id])
+                                                        // fields: какая колонка в Template ссылается
+                                                        // references: на какую колонку в User
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt                 // обновляется автоматически при любом update()
+
+  // Обратная сторона: список постов, которые используют этот шаблон
+  posts Post[]
+}
+
+// ======================
+// POST (Пост)
+// ======================
+model Post {
+  id            Int       @id @default(autoincrement())
+  title         String                              // Заголовок
+  status        String    @default("draft")         // Статус: draft | scheduled | published
+  socialNetwork String                              // Соц-сеть: instagram | telegram | vk | x
+  scheduledAt   DateTime?                            // Запланированная дата/время публикации
+  tags          String[]                             // Теги/хэштеги — массив строк
+  images        String[]                             // Изображение(-ия) — массив ссылок, пост может иметь несколько
+
+  // Связь Пост(M) → Шаблон(1): шаблон необязателен ("?"),
+  // но если указан — ссылается ровно на один конкретный шаблон
+  templateId Int?
+  template   Template? @relation(fields: [templateId], references: [id])
+
+  // Связь Пост(M) → Пользователь(1): у поста всегда есть ровно один автор
+  authorId Int
+  author   User @relation(fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now()) // Дата создания
+  updatedAt DateTime @updatedAt      // обновляется сама — закрывает поле "Дата изменения" из диаграммы
+}
