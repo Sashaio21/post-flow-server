@@ -9,7 +9,10 @@ const transporter = nodemailer.createTransport({
 });
 
 export const emailService = {
+
     async sendVerificationCode(to: string, code: string) {
+        console.log(code);
+
         await transporter.sendMail({
             from: `"PostFlow" <${process.env.EMAIL_USER}>`,
             to,
