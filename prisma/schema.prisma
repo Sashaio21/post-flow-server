@@ -13,12 +13,14 @@ datasource db {
 // USER
 // ======================
 model User {
-  id           Int    @id @default(autoincrement()) // первичный ключ, автоинкремент (1, 2, 3...)
-  email        String @unique                        // уникальный индекс — два юзера не могут иметь один email
-  passwordHash String                                 // хэш-пароль, никогда не храним пароль как есть
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
 
-  // Обратные стороны связей — списки того, что принадлежит пользователю.
-  // В реальной БД колонок не создают, нужны только для удобного доступа из кода (user.posts, user.templates)
+  isVerified               Boolean   @default(false) // подтвердил ли email
+  verificationCode         String?                    // текущий 6-значный код
+  verificationCodeExpires  DateTime?                  // когда код сгорает
+
   posts     Post[]
   templates Template[]
 }
