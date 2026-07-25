@@ -2,8 +2,9 @@ import express from "express";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
 import userRoutes from "./routes/user.routes";
-import testRoutes from "./routes/test.routes"; // ← добавить
+import testRoutes from "./routes/test.routes"; 
 import postRoutes from "./routes/post.routes"
+import socialConnectionRoutes from "./routes/social-connection.routes";
 
 const app = express();
 
@@ -17,7 +18,7 @@ app.get("/", (req, res) => {
 
 app.use("/api", userRoutes);
 app.use("/api", postRoutes);
-
+app.use("/api", socialConnectionRoutes);
 
 app.use("/api", testRoutes);
 

@@ -73,6 +73,39 @@ export async function updatePost(req: Request, res: Response) {
     res.json(updatedPost);
 }
 
+
+// Частичное обновление — можно передать любой поднабор полей
+export async function patchPost(req: Request, res: Response) {
+    const id = Number(req.params.id);
+
+    const post = await prisma.post.findUnique({ where: { id } });
+    if (!post) {
+        return res.status(404).json({ message: "Пост не найден" });
+    }
+    if (post.authorId !== req.user!.id) {
+        return res.status(403).json({ message: "Это не ваш пост" });
+    }
+
+    // Собираем data только из реально переданных полей —
+    // явно, а не полагаясь на то, что Prisma сама пропустит undefined
+    const data: Record<string, any> = {};
+    if (req.body.title !== undefined) data.title = req.body.title;
+    if (req.body.status !== undefined) data.status = req.body.status;
+    if (req.body.socialNetwork !== undefined) data.socialNetwork = req.body.socialNetwork;
+    if (req.body.scheduledAt !== undefined) data.scheduledAt = req.body.scheduledAt ? new Date(req.body.scheduledAt) : null;
+    if (req.body.tags !== undefined) data.tags = req.body.tags;
+    if (req.body.images !== undefined) data.images = req.body.images;
+
+    if (Object.keys(data).length === 0) {
+        return res.status(400).json({ message: "Нужно передать хотя бы одно поле для изменения" });
+    }
+
+    const updatedPost = await prisma.post.update({ where: { id }, data });
+    res.json(updatedPost);
+}
+
+
+
 export async function deletePost(req: Request, res: Response) {
     const id = Number(req.params.id);
 

@@ -17,12 +17,13 @@ model User {
   email        String   @unique
   passwordHash String
 
-  isVerified               Boolean   @default(false) // подтвердил ли email
-  verificationCode         String?                    // текущий 6-значный код
-  verificationCodeExpires  DateTime?                  // когда код сгорает
+  isVerified               Boolean   @default(false)
+  verificationCode         String?
+  verificationCodeExpires  DateTime?
 
-  posts     Post[]
-  templates Template[]
+  posts             Post[]
+  templates         Template[]
+  socialConnections SocialConnection[]  // ← добавить
 }
 
 // ======================
@@ -34,8 +35,7 @@ model Template {
   htmlPath     String                          // путь к html файлу
   imagesPath   String?                         // путь к изображениям — "?" значит поле необязательное
   placeholders String[]                        // плейсхолдеры — массив строк, напр. ["title", "image"]
-  coverHtml    String?                         // html обложка — превью, как будет выглядеть шаблон
-
+  
   ownerId Int                                          // внешний ключ — id пользователя-владельца
   owner   User @relation(fields: [ownerId], references: [id])
                                                         // fields: какая колонка в Template ссылается
@@ -71,4 +71,28 @@ model Post {
 
   createdAt DateTime @default(now()) // Дата создания
   updatedAt DateTime @updatedAt      // обновляется сама — закрывает поле "Дата изменения" из диаграммы
+}
+
+
+
+// ======================
+// SOCIAL CONNECTION (Соц-сеть)
+// ======================
+model SocialConnection {
+  id       Int    @id @default(autoincrement())
+  platform String                          // Платформа: telegram | instagram | threads
+
+  accessToken  String                       // токен — текущий рабочий токен для запросов к API платформы
+  refreshToken String?                       // токен обновления — есть не у всех платформ (у Telegram, например, нет)
+  expiresAt    DateTime?                     // срок действия — null для платформ без истечения (Telegram)
+
+  accountName String                         // имя аккаунта — для отображения пользователю (например, "@my_channel")
+  metadata    Json?                          // специфичные поля — то, что уникально для конкретной платформы
+                                              // (chatId для Telegram, igUserId для Instagram/Threads и т.д.)
+
+  ownerId Int                                // внешний ключ — id пользователя-владельца
+  owner   User @relation(fields: [ownerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
