@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authService } from "../services/auth.service";
 import { setTokenCookie } from "../utils/cookie";
 import { authLimiter, registerLimiter } from "../middleware/rate-limit.middleware";
-
+import { authMiddleware } from "../middleware/auth.middleware";
 
 
 const router = Router();
@@ -153,5 +153,27 @@ router.post("/users/logout", (req, res) => {
     res.clearCookie("token");
     res.json({ message: "Выход выполнен" });
 });
+
+
+
+ 
+/**
+ * @openapi
+ * /api/users/me:
+ *   get:
+ *     summary: Данные текущего авторизованного пользователя
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: Пользователь
+ *       401:
+ *         description: Токен не передан/невалиден
+ */
+router.get("/users/me", authMiddleware, (req, res) => {
+  const { id, email } = req.user!;
+  return res.status(200).json({ user: { id, email } });
+});
+ 
+
 
 export default router;
