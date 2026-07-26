@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { authService } from "../services/auth.service";
 import { setTokenCookie } from "../utils/cookie";
+import { authLimiter, registerLimiter } from "../middleware/rate-limit.middleware";
+
+
 
 const router = Router();
 
@@ -23,7 +26,7 @@ const router = Router();
  *       201: { description: Код отправлен на почту }
  *       409: { description: Email уже используется }
  */
-router.post("/users/register", async (req, res) => {
+router.post("/users/register", registerLimiter, async (req, res) => {
     try {
         const { email, password } = req.body;
         if (!email || !password) {
@@ -63,7 +66,7 @@ router.post("/users/register", async (req, res) => {
  *       200: { description: Email подтверждён, токен установлен в cookie }
  *       400: { description: Неверный или истёкший код }
  */
-router.post("/users/verify", async (req, res) => {
+router.post("/users/verify", authLimiter, async (req, res) => {
     try {
         const { email, code } = req.body;
         if (!email || !code) {
@@ -115,7 +118,7 @@ router.post("/users/verify", async (req, res) => {
  *       403:
  *         description: Email не подтверждён
  */
-router.post("/users/login", async (req, res) => {
+router.post("/users/login", authLimiter, async (req, res) => {
     try {
         const { email, password } = req.body;
         if (!email || !password) {

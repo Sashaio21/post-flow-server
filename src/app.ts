@@ -7,21 +7,15 @@ import userRoutes from "./routes/user.routes";
 import postRoutes from "./routes/post.routes";
 import socialConnectionRoutes from "./routes/social-connection.routes";
 import testRoutes from "./routes/test.routes";
+import helmet from "helmet";
 
 const app = express();
 
-const allowedOrigins = (process.env.CLIENT_URLS || "").split(",");
+app.use(helmet());
 
 app.use(cors({
-    origin: (origin, callback) => {
-        // origin бывает undefined для запросов без браузера (curl, Postman) — разрешаем
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error("Not allowed by CORS"));
-        }
-    },
-    credentials: true
+    origin: "http://localhost:5173", // адрес будущего клиента — поменяете, когда он появится
+    credentials: true                 // обязательно, иначе браузер не пришлёт cookie
 }));
 
 app.use(express.json());
