@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authService } from "../services/auth.service";
+import { setTokenCookie } from "../utils/cookie";
 
 const router = Router();
 
@@ -59,7 +60,7 @@ router.post("/users/register", async (req, res) => {
  *               email: { type: string, example: ivan@gmail.com }
  *               code: { type: string, example: "042817" }
  *     responses:
- *       200: { description: Email подтверждён, выдан токен }
+ *       200: { description: Email подтверждён, токен установлен в cookie }
  *       400: { description: Неверный или истёкший код }
  */
 router.post("/users/verify", async (req, res) => {
@@ -71,10 +72,8 @@ router.post("/users/verify", async (req, res) => {
 
         const { user, token } = await authService.verifyEmail(email, code);
 
-        res.json({
-            user: { id: user.id, email: user.email },
-            token
-        });
+        setTokenCookie(res, token);
+        res.json({ user: { id: user.id, email: user.email } });
     } catch (err: any) {
         const messages: Record<string, string> = {
             USER_NOT_FOUND: "Пользователь не найден",
@@ -88,8 +87,6 @@ router.post("/users/verify", async (req, res) => {
         res.status(500).json({ message: "Ошибка сервера" });
     }
 });
-
-
 
 /**
  * @swagger
@@ -112,7 +109,7 @@ router.post("/users/verify", async (req, res) => {
  *                 example: mypassword123
  *     responses:
  *       200:
- *         description: Токен выдан
+ *         description: Токен установлен в cookie
  *       401:
  *         description: Неверный email или пароль
  *       403:
@@ -127,10 +124,8 @@ router.post("/users/login", async (req, res) => {
 
         const { user, token } = await authService.login(email, password);
 
-        res.json({
-            user: { id: user.id, email: user.email },
-            token
-        });
+        setTokenCookie(res, token);
+        res.json({ user: { id: user.id, email: user.email } });
     } catch (err: any) {
         if (err.message === "INVALID_CREDENTIALS") {
             return res.status(401).json({ message: "Неверный email или пароль" });
@@ -142,7 +137,18 @@ router.post("/users/login", async (req, res) => {
     }
 });
 
-
-
+/**
+ * @swagger
+ * /api/users/logout:
+ *   post:
+ *     summary: Выйти — очистить cookie с токеном
+ *     tags: [Users]
+ *     responses:
+ *       200: { description: Выход выполнен }
+ */
+router.post("/users/logout", (req, res) => {
+    res.clearCookie("token");
+    res.json({ message: "Выход выполнен" });
+});
 
 export default router;

@@ -1,20 +1,24 @@
 # PROJECT CONTEXT: post-flow
 
-Последнее обновление: 2026-07-25
+Последнее обновление: 2026-07-26
 
 Справка для восстановления контекста без чтения всего кода. Строго
 разделяет "реально в проекте" и "обсуждалось/предлагалось в чате, но не
 применено" — не путать одно с другим.
 
-**Оговорка к этой версии:** разделы 1–2 не менялись с последней проверки
-по реальному архиву проекта (2026-07-24). `SocialConnection` подтверждена
-как реально работающая 2026-07-25 — вы прислали скриншот pgAdmin с
-реальными записями и реальный JSON-ответ эндпоинта `GET
+**Оговорка к этой версии:** разделы 1–2 частично обновлены. `SocialConnection`
+подтверждена как реально работающая (2026-07-25) — вы прислали скриншот
+pgAdmin с реальными записями и реальный JSON-ответ эндпоинта `GET
 /api/social-connections`, показывающий именно то поведение, которое
 закладывалось (`hasAccessToken`/`hasRefreshToken` вместо самих токенов).
 Схема `Template` также уточнена по вашему прямому вью файла
-`schema.prisma` (2026-07-25) — поле `coverHtml`, которое было в версии
-от 24-го числа, в реальном файле отсутствует.
+`schema.prisma` — поле `coverHtml` в реальном файле отсутствует.
+
+**Переход авторизации на httpOnly-cookie подтверждён рабочим (2026-07-26):**
+вы прислали реальные Response/Request Headers из DevTools — после правки
+`user.routes.ts` (добавлен `setTokenCookie` в `/login` и `/verify`)
+`Set-Cookie` появляется в ответе, `GET /api/posts` больше не выдаёт
+"токен не передан". `Authorization: Bearer` полностью заменён на cookie.
 
 **Всё ещё не подтверждено** (см. раздел 8): `PATCH /api/posts/:id`
 (`patchPost`), `src/config/social-platforms.ts`, любая логика реальной
@@ -29,6 +33,8 @@
 - Prisma **6.19.3** (зафиксировано, не обновлять до 7 — см. "Известные грабли")
 - PostgreSQL, БД `post-flow-db` (через `DATABASE_URL`)
 - bcrypt, jsonwebtoken, nodemailer, node-cron — установлены и используются
+- cors, cookie-parser — установлены, авторизация через httpOnly cookie
+  (не `Authorization: Bearer`)
 - swagger-jsdoc + swagger-ui-express — документация на `/api-docs`
 - Разработка: `nodemon --exec tsx src/server.ts`
 - Сборка: `tsc` → `dist/`, запуск прод-сборки: `node dist/server.js`
@@ -80,12 +86,12 @@ server/
 │   ├── jobs/
 │   │   └── cleanup-unverified.ts
 │   ├── middleware/
-│   │   └── auth.middleware.ts   # authMiddleware — проверка Bearer-токена
+│   │   └── auth.middleware.ts   # authMiddleware — читает token из req.cookies (httpOnly), не из заголовка
 │   ├── routes/
 │   │   ├── post.routes.ts               # /api/posts — CRUD, всё под authMiddleware
 │   │   ├── social-connection.routes.ts  # /api/social-connections — CRUD, всё под authMiddleware
 │   │   ├── test.routes.ts               # /api/test-auth — служебный, для проверки токена
-│   │   └── user.routes.ts               # /register, /verify, /login (логика прямо в роуте)
+│   │   └── user.routes.ts               # /register, /verify, /login, /logout (логика прямо в роуте)
 │   ├── services/
 │   │   ├── auth.service.ts
 │   │   └── email.service.ts
@@ -93,6 +99,7 @@ server/
 │   │   └── express.d.ts         # расширяет Request полем user: { id, email }
 │   ├── utils/
 │   │   ├── code.ts
+│   │   ├── cookie.ts            # setTokenCookie() — httpOnly, sameSite: strict, maxAge 7 дней
 │   │   └── jwt.ts               # generateToken() И verifyToken() — обе реализованы
 │   ├── app.ts
 │   └── server.ts
@@ -261,31 +268,39 @@ EMAIL_APP_PASSWORD
 
 - **`POST /api/users/verify`**
   Body: `{ email, code }`.
-  Подтверждает код, активирует аккаунт, выдаёт JWT.
-  → `200` `{ user: { id, email }, token }`
+  Подтверждает код, активирует аккаунт. Токен ставится в httpOnly cookie
+  через `setTokenCookie()`, в теле ответа его больше нет.
+  → `200` `{ user: { id, email } }` + `Set-Cookie: token=...`
   → `400` email/code не переданы, `USER_NOT_FOUND`, `ALREADY_VERIFIED`,
      `INVALID_CODE`, `CODE_EXPIRED` (текст ошибки зависит от кейса)
   → `500` прочее
 
 - **`POST /api/users/login`**
   Body: `{ email, password }`.
-  Требует подтверждённый email.
-  → `200` `{ user: { id, email }, token }`
+  Требует подтверждённый email. Токен ставится в httpOnly cookie, не в теле.
+  → `200` `{ user: { id, email } }` + `Set-Cookie: token=...`
   → `400` email/password не переданы
   → `401` `INVALID_CREDENTIALS` (email не найден ИЛИ пароль неверный —
      намеренно одна ошибка на оба случая)
   → `403` `EMAIL_NOT_VERIFIED`
   → `500` прочее
 
+- **`POST /api/users/logout`**
+  Без тела. Очищает cookie `token` (`res.clearCookie`).
+  → `200` `{ message: "Выход выполнен" }`
+
 > Важно: в `login` порядок — сначала пароль, потом `isVerified`,
 > чтобы не раскрывать существование email через разницу в ошибках.
 
-Токен во всех трёх — через `generateToken()`, payload `{ id, email }`.
+Токен во всех — через `generateToken()` (payload `{ id, email }`),
+устанавливается в cookie через `setTokenCookie()` (`src/utils/cookie.ts`):
+`httpOnly: true`, `sameSite: "strict"`, `secure` только в проде,
+`maxAge` 7 дней — совпадает со сроком жизни самого JWT.
 
 ### `/api/posts/*` (`post.routes.ts` + `post.controller.ts`, всё под `authMiddleware`)
 
-Требуют заголовок `Authorization: Bearer <token>`. Владелец поста
-определяется по `authorId === req.user.id`, чужой пост — `403`.
+Требуют httpOnly cookie `token` (выставляется `/login` или `/verify`).
+Владелец поста определяется по `authorId === req.user.id`, чужой пост — `403`.
 
 - **`GET /api/posts`**
   Возвращает посты текущего пользователя (`orderBy: createdAt desc`).
@@ -390,7 +405,11 @@ EMAIL_APP_PASSWORD
 - Комментарии в коде — на русском, объясняют "зачем", не дублируют
   очевидное из названия переменной.
 - Swagger JSDoc — прямо над каждым роутом в файле роута (сохраняется и
-  для `post.routes.ts`, и для `test.routes.ts`).
+  для `post.routes.ts`, и для `test.routes.ts`). **Не подтверждено:**
+  JSDoc всё ещё может указывать `security: [{ bearerAuth: [] }]` вместо
+  честного описания cookie-авторизации (`cookieAuth`/`apiKey in: cookie`)
+  — расхождение с реальным механизмом, предложена правка, применение не
+  подтверждено.
 - Список поддерживаемых соцсетей и их обязательных полей предложено
   хранить в коде (`src/config/social-platforms.ts`), не отдельной
   Prisma-моделью — см. раздел 9, решение не подтверждено как применённое.
@@ -403,8 +422,6 @@ EMAIL_APP_PASSWORD
 реальный код **не подтверждено как внесённое**.
 
 - IP-whitelist middleware для ограничения доступа по адресам
-- httpOnly cookie вместо возврата токена в JSON-теле ответа
-- CORS-конфигурация (`app.ts` не содержит `cors()`)
 - Rate limiting (`express-rate-limit`)
 - Google OAuth
 - Переход email-отправки на HTTPS API (Resend/SendGrid) вместо Gmail SMTP
@@ -451,13 +468,13 @@ EMAIL_APP_PASSWORD
 
 ## 9. Открытые технические решения
 
-- **Хранение токена на клиенте**: сейчас JSON-ответ (`{ token }` в теле).
-  Обсуждался переход на httpOnly cookie ради защиты от XSS — решение не
-  принято, код не менялся.
-- **CORS-политика**: не настроена вообще. Нужно решить allowed origins,
-  когда определится домен фронтенда.
-- **`sameSite` для будущей cookie**: обсуждались `strict`/`lax`/`none` —
-  зависит от того, будут ли фронт и API на одном домене (пока неизвестно).
+- **CORS origin захардкожен**: `app.ts` → `cors({ origin:
+  "http://localhost:5173" })` — адрес пока не существующего клиента.
+  Нужно поменять на реальный домен, когда появится фронтенд (или список
+  origins для дев/прод).
+- **`helmet`, ограничение размера тела запроса (`express.json({ limit
+  })`), Zod-валидация** — обсуждались как рекомендации по безопасности,
+  не применены.
 - **Валидация `status` в `PUT /api/posts/:id`**: сейчас можно передать
   любую строку, не только `draft`/`scheduled`/`published` — не решено,
   добавлять ли enum-валидацию на уровне контроллера или Prisma-схемы.
@@ -467,3 +484,5 @@ EMAIL_APP_PASSWORD
   через какое именно подключение публикуется, если у пользователя
   несколько аккаунтов одной платформы) — поднято, решение отложено до
   реализации самой публикации.
+- **Отдельный БД-пользователь с ограниченными правами** вместо `postgres`
+  (суперпользователь) в `DATABASE_URL` — поднято, не решено.
