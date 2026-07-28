@@ -17,10 +17,12 @@ const options: swaggerJsdoc.Options = {
         // ← добавить весь этот блок, если его ещё нет
         components: {
             securitySchemes: {
-                bearerAuth: {
-                    type: "http",
-                    scheme: "bearer",
-                    bearerFormat: "JWT"
+                cookieAuth: {
+                    type: "apiKey",
+                    in: "cookie",
+                    name: "token",
+                    description:
+                        "JWT в httpOnly cookie 'token', выставляется /api/users/login и /api/users/verify через Set-Cookie. Не Bearer-заголовок."
                 }
             }
         }

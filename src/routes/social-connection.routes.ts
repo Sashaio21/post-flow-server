@@ -7,6 +7,8 @@ import {
     patchConnection,
     deleteConnection
 } from "../controllers/social-connection.controller";
+import { validate } from "../middleware/validate.middleware";
+import { createConnectionSchema, patchConnectionSchema } from "../schemas/social-connection.schema";
 
 const router = Router();
 
@@ -16,7 +18,7 @@ const router = Router();
  *   get:
  *     summary: Получить список своих подключённых соцсетей
  *     tags: [SocialConnections]
- *     security: [{ bearerAuth: [] }]
+ *     security: [{ cookieAuth: [] }]
  *     responses:
  *       200: { description: Список подключений }
  *       401: { description: Токен не передан или недействителен }
@@ -29,7 +31,7 @@ router.get("/social-connections", authMiddleware, getAllConnections);
  *   get:
  *     summary: Получить одно подключение
  *     tags: [SocialConnections]
- *     security: [{ bearerAuth: [] }]
+ *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - name: id
  *         in: path
@@ -48,7 +50,7 @@ router.get("/social-connections/:id", authMiddleware, getConnectionById);
  *   post:
  *     summary: Подключить соцсеть
  *     tags: [SocialConnections]
- *     security: [{ bearerAuth: [] }]
+ *     security: [{ cookieAuth: [] }]
  *     requestBody:
  *       required: true
  *       content:
@@ -69,7 +71,7 @@ router.get("/social-connections/:id", authMiddleware, getConnectionById);
  *       201: { description: Подключение создано }
  *       400: { description: Не переданы обязательные поля }
  */
-router.post("/social-connections", authMiddleware, createConnection);
+router.post("/social-connections", authMiddleware, validate(createConnectionSchema), createConnection);
 
 /**
  * @swagger
@@ -77,7 +79,7 @@ router.post("/social-connections", authMiddleware, createConnection);
  *   patch:
  *     summary: Частично обновить подключение
  *     tags: [SocialConnections]
- *     security: [{ bearerAuth: [] }]
+ *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - name: id
  *         in: path
@@ -101,7 +103,7 @@ router.post("/social-connections", authMiddleware, createConnection);
  *       403: { description: Принадлежит другому пользователю }
  *       404: { description: Не найдено }
  */
-router.patch("/social-connections/:id", authMiddleware, patchConnection);
+router.patch("/social-connections/:id", authMiddleware, validate(patchConnectionSchema), patchConnection);
 
 /**
  * @swagger
@@ -109,7 +111,7 @@ router.patch("/social-connections/:id", authMiddleware, patchConnection);
  *   delete:
  *     summary: Отключить соцсеть
  *     tags: [SocialConnections]
- *     security: [{ bearerAuth: [] }]
+ *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - name: id
  *         in: path

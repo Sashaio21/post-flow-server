@@ -12,7 +12,7 @@ const router = Router();
  *     tags:
  *       - Test
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: Токен верный

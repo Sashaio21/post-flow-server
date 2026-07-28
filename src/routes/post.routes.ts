@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { authMiddleware } from "../middleware/auth.middleware";
 import { getAllPosts, getPostById, createPost, updatePost, patchPost,deletePost } from "../controllers/post.controller";
+import { validate } from "../middleware/validate.middleware";
+import { createPostSchema, updatePostSchema, patchPostSchema } from "../schemas/post.schema";
 
 const router = Router();
 
@@ -10,7 +12,7 @@ const router = Router();
  *   get:
  *     summary: Получить список своих постов
  *     tags: [Posts]
- *     security: [{ bearerAuth: [] }]
+ *     security: [{ cookieAuth: [] }]
  *     responses:
  *       200: { description: Список постов }
  *       401: { description: Токен не передан или недействителен }
@@ -23,7 +25,7 @@ router.get("/posts", authMiddleware, getAllPosts);
  *   get:
  *     summary: Получить один пост по id
  *     tags: [Posts]
- *     security: [{ bearerAuth: [] }]
+ *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - name: id
  *         in: path
@@ -42,7 +44,7 @@ router.get("/posts/:id", authMiddleware, getPostById);
  *   post:
  *     summary: Создать пост
  *     tags: [Posts]
- *     security: [{ bearerAuth: [] }]
+ *     security: [{ cookieAuth: [] }]
  *     requestBody:
  *       required: true
  *       content:
@@ -60,7 +62,7 @@ router.get("/posts/:id", authMiddleware, getPostById);
  *       201: { description: Пост создан }
  *       400: { description: Не переданы обязательные поля }
  */
-router.post("/posts", authMiddleware, createPost);
+router.post("/posts", authMiddleware, validate(createPostSchema), createPost);
 
 /**
  * @swagger
@@ -68,7 +70,7 @@ router.post("/posts", authMiddleware, createPost);
  *   put:
  *     summary: Обновить пост
  *     tags: [Posts]
- *     security: [{ bearerAuth: [] }]
+ *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - name: id
  *         in: path
@@ -107,7 +109,7 @@ router.post("/posts", authMiddleware, createPost);
  *       403: { description: Пост принадлежит другому пользователю }
  *       404: { description: Пост не найден }
  */
-router.put("/posts/:id", authMiddleware, updatePost);
+router.put("/posts/:id", authMiddleware, validate(updatePostSchema), updatePost);
 
 
 
@@ -119,7 +121,7 @@ router.put("/posts/:id", authMiddleware, updatePost);
  *   patch:
  *     summary: Частично обновить пост (только переданные поля)
  *     tags: [Posts]
- *     security: [{ bearerAuth: [] }]
+ *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - name: id
  *         in: path
@@ -144,7 +146,7 @@ router.put("/posts/:id", authMiddleware, updatePost);
  *       403: { description: Пост принадлежит другому пользователю }
  *       404: { description: Пост не найден }
  */
-router.patch("/posts/:id", authMiddleware, patchPost);
+router.patch("/posts/:id", authMiddleware, validate(patchPostSchema), patchPost);
 
 
 /**
@@ -153,7 +155,7 @@ router.patch("/posts/:id", authMiddleware, patchPost);
  *   delete:
  *     summary: Удалить пост
  *     tags: [Posts]
- *     security: [{ bearerAuth: [] }]
+ *     security: [{ cookieAuth: [] }]
  *     parameters:
  *       - name: id
  *         in: path

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../config/prisma";
+import { encrypt } from "../utils/crypto";
 
 // Убираем чувствительные поля из ответа — та же логика, что и с passwordHash у User.
 // Токены не должны улетать обратно клиенту после того, как один раз сохранены.
@@ -47,15 +48,11 @@ export async function getConnectionById(req: Request, res: Response) {
 export async function createConnection(req: Request, res: Response) {
     const { platform, accessToken, refreshToken, expiresAt, accountName, metadata } = req.body;
 
-    if (!platform || !accessToken || !accountName) {
-        return res.status(400).json({ message: "platform, accessToken и accountName обязательны" });
-    }
-
     const connection = await prisma.socialConnection.create({
         data: {
             platform,
-            accessToken,
-            refreshToken: refreshToken || null,
+            accessToken: encrypt(accessToken),
+            refreshToken: refreshToken ? encrypt(refreshToken) : null,
             expiresAt: expiresAt ? new Date(expiresAt) : null,
             accountName,
             metadata: metadata || undefined,
@@ -81,8 +78,10 @@ export async function patchConnection(req: Request, res: Response) {
     }
 
     const data: Record<string, any> = {};
-    if (req.body.accessToken !== undefined) data.accessToken = req.body.accessToken;
-    if (req.body.refreshToken !== undefined) data.refreshToken = req.body.refreshToken;
+    if (req.body.accessToken !== undefined) data.accessToken = encrypt(req.body.accessToken);
+    if (req.body.refreshToken !== undefined) {
+        data.refreshToken = req.body.refreshToken ? encrypt(req.body.refreshToken) : null;
+    }
     if (req.body.expiresAt !== undefined) data.expiresAt = req.body.expiresAt ? new Date(req.body.expiresAt) : null;
     if (req.body.accountName !== undefined) data.accountName = req.body.accountName;
     if (req.body.metadata !== undefined) data.metadata = req.body.metadata;
